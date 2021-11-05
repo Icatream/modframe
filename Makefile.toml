@@ -1,0 +1,90 @@
+[env]
+PORT = "8000"
+
+[config]
+skip_core_tasks = true
+
+# ---- GENERAL ----
+[tasks.serve]
+description = "Start server"
+dependencies = ["build_all"]
+install_crate = { crate_name = "microserver", binary = "microserver", test_arg = "-h" }
+command = "microserver"
+args = ["--port", "${PORT}"]
+
+[tasks.watch]
+description = "Build, create wasms, and watch/recompile files for changes"
+workspace = false
+dependencies = ["serve"]
+watch = { ignore_pattern="pkg/*" }
+
+[tasks.verify]
+description = "Format, lint with Clippy and run tests"
+dependencies = ["fmt", "clippy", "test_h_chrome"]
+
+# ---- BUILD ----
+[tasks.build]
+description = "Build"
+command = "cargo"
+args = ["build"]
+
+[tasks.build_release]
+description = "Build in release mode"
+command = "cargo"
+args = ["build", "--release"]
+
+[tasks.build_wasm]
+description = "Build with wasm-pack"
+install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
+command = "wasm-pack"
+args = ["build", "--target", "web", "--out-name", "package", "--dev"]
+
+[tasks.build_wasm_release]
+description = "Build with wasm-pack in release"
+install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
+command = "wasm-pack"
+args = ["build", "--target", "web", "--out-name", "package", "--release"]
+
+[tasks.build_all]
+description = "Build and create wasm"
+dependencies = ["build", "build_wasm"]
+
+[tasks.build_all_release]
+description = "Build and create wasm in release mode"
+dependencies = ["build_release", "build_wasm_release"]
+
+# ---- LINT ----
+[tasks.fmt]
+description = "Format with rustfmt"
+install_crate = { crate_name = "rustfmt-nightly", rustup_component_name = "rustfmt", binary = "rustfmt", test_arg = "--help" }
+command = "cargo"
+args = ["fmt", "--all"]
+
+[tasks.clippy]
+description = "Lint with Clippy"
+clear = true
+install_crate = { rustup_component_name = "clippy", binary = "cargo-clippy", test_arg = "--help" }
+command = "cargo"
+args = ["clippy", "--all-features", "--", "--deny", "warnings", "--deny", "clippy::pedantic", "--deny", "clippy::nursery"]
+
+# ---- TEST ----
+[tasks.test]
+description = "Run tests. Ex: 'cargo make test firefox'. Test envs: [chrome, firefox, safari]"
+install_crate = { crate_name = "wasm-pack", binary = "wasm-pack", test_arg = "-V" }
+command = "wasm-pack"
+args = ["test", "--${@}"]
+
+[tasks.test_h]
+description = "Run headless tests. Ex: 'cargo make test_h firefox'. Test envs: [chrome, firefox, safari]"
+extend = "test"
+args = ["test", "--headless", "--${@}"]
+
+[tasks.test_h_chrome]
+description = "Run headless tests with Chrome"
+extend = "test"
+args = ["test", "--headless", "--chrome"]
+
+[tasks.test_h_firefox]
+description = "Run headless tests with Firefox."
+extend = "test"
+args = ["test", "--headless", "--firefox"]
